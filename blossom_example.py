@@ -10,10 +10,10 @@ Example run of BLOSSOM
 
 import os
 os.chdir('...')
+os.chdir('C:/Users/judithboekee/FruitFrost_GitHub/FruitFrost/Plant_Energy_Model/')
 
 import blossom as blossom
 import matplotlib.pyplot as plt
-
 
 
 """ 
@@ -21,6 +21,7 @@ Create model_input and run case
 """
 run1input                = blossom.model_input()
 
+run1input.model          = 'RV'
 
 run1input.dt             = 1       # time step [s]
 run1input.runtime        = 300     # total run time [s]

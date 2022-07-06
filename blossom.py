@@ -41,6 +41,9 @@ class model:
     def init(self):
         # assign variables from input data
         
+        # Decide on model
+        self.model      = self.input.model      # Use 'Monteith' for parametrization of Monteith (1990) \
+                                                # use 'RV' for for parametrization based on Refreshment Velocity
         # initialize constants air
         self.cp         = 1005.                 # specific heat of dry air [J kg-1 K-1]
         self.kappa      = 0.4                   # Von Karman constant [-]
@@ -50,13 +53,18 @@ class model:
         self.dyn_vis    = 1.718e-5              # dynamical viscocity air [N s m-2]
 
         # initialize non-dimension numbers
-        self.Nu                = None                       # Nusselt number []
-        self.Re                = None                       # Reynolds number []
-        self.Gr                = None                       # Grashof number []
-        self.Ri                = None                       # Richards number (Gr/Re2) []
+        self.Nu         = None                  # Nusselt number []
+        self.Re         = None                  # Reynolds number []
+        self.Gr         = None                  # Grashof number []
+        self.Ri         = None                  # Richards number (Gr/Re2) []
+        
+        # initialize refreshment velocity
+        self.g_star        = None               # Apparent gravity [m s-2]
+        self.w_star        = None               # Typical vertical velocity [m s-1]
+        self.m             = None               # Refreshment velocity [m s-1]
         
         # initialize leaf characteristics 
-        self.heatcap_leaf  = self.input.heatcap_leaf         # heat capacity plant [J kg-1 K-1]
+        self.heatcap_leaf  = self.input.heatcap_leaf         # heat capacity plant  [J m-3 K-1]
         self.r_leaf        = self.input.r_leaf               # diameter plant [m]
         self.d_leaf        = self.input.d_leaf               # thickness plant [m]
         self.E_leaf        = 0.96                            # emissivity plant
@@ -134,53 +142,105 @@ class model:
             
         self.Ri = abs(self.Gr / self.Re**2)
         
+        # Calculates Nusselt number based on Monteith (1990)
+        if self.model == "Monteith":
         
-        if self.plantpart == 'branch': 
-        
-            if self.Ri > 10:
-                print("free")
-                if self.Tleaf < self.Tair:
-                    self.Nu = 0.48 * self.Gr**0.25
-                elif self.Tleaf > self.Tair:
-                    self.Nu = 0.09 * self.Gr**0.33
+            if self.plantpart == 'branch': 
             
-            # Forced convection
-            elif self.Ri < 0.1:
+                if self.Ri > 10:
+                    print("free")
+                    if self.Tleaf <= self.Tair:
+                        self.Nu = 0.48 * self.Gr**0.25
+                    elif self.Tleaf > self.Tair:
+                        self.Nu = 0.09 * self.Gr**0.33
+                
+                # Forced convection
+                elif self.Ri < 0.1:
+                    if self.Re <= 10e3:
+                        self.Nu = (0.32 + 0.51*self.Re**0.52) 
+                        
+                    elif self.Re > 10e3:
+                        self.Nu = 0.23 * self.Re**0.6 
+                        
+                
+                # Mixed convection
+                else: 
+                    
+                    if self.Re <= 10e3:
+                        if self.Tleaf <= self.Tair:
+                            self.Nu = ((0.32 + 0.51*self.Re**0.52) **3.5 + (0.48 * self.Gr**0.25)**3.5)**(1/3.5)
+                        elif self.Tleaf > self.Tair:
+                            self.Nu = ((0.32 + 0.51*self.Re**0.52) **3.5 + (0.09 * self.Gr**0.33)**3.5)**(1/3.5)
+                    elif self.Re > 10e3:       
+                        if self.Tleaf <= self.Tair:
+                            self.Nu = ((0.23 * self.Re**0.6 )**3.5 + (0.48 * self.Gr**0.25)**3.5)**(1/3.5)
+                        elif self.Tleaf > self.Tair:
+                            self.Nu = ((0.23 * self.Re**0.6 )**3.5 + (0.09 * self.Gr**0.33)**3.5)**(1/3.5)
+                            
+    
+                   
+            
+            if self.plantpart == 'leaf' or self.plantpart == 'flower':     
+            # Free convection
+                if self.Ri > 10:
+                   
+                    if self.Tleaf <= self.Tair:
+                        self.Nu = 0.13 * self.Gr**0.33
+                    elif self.Tleaf > self.Tair:
+                        self.Nu = 0.5 * self.Gr**0.25
+                
+                # Forced convection
+                elif self.Ri < 0.1:
+                    if self.Re <= 2e4:
+                        self.Nu = 0.6 * self.Re**0.5
+                       
+                    elif self.Re > 2e4:
+                        self.Nu = 0.032 * self.Re**0.8 
+                       
+                
+                # Mixed convection
+                else: 
+                    if self.Re <= 2e4:
+                        if self.Tleaf <= self.Tair:
+                            self.Nu = ((0.6 * self.Re**0.5)**3.5 + (0.13 * self.Gr**0.33)**3.5)**(1/3.5)
+                        elif self.Tleaf > self.Tair:
+                            self.Nu = ((0.6 * self.Re**0.5)**3.5 + (0.5 * self.Gr**0.25)**3.5)**(1/3.5)
+                    elif self.Re > 2e4:       
+                        if self.Tleaf <= self.Tair:
+                            self.Nu = ((0.032 * self.Re**0.8 )**3.5 + (0.13 * self.Gr**0.33)**3.5)**(1/3.5)
+                        elif self.Tleaf > self.Tair:
+                            self.Nu = ((0.032 * self.Re**0.8 )**3.5 + (0.5 * self.Gr**0.25)**3.5)**(1/3.5)
+        
+        # Calculates Nusselt number based on Refreshment Velocity 
+        if self.model == "RV":
+            
+            if self.plantpart == 'branch': 
+                
+                self.g_star = self.g * (self.Tleaf-self.Tair)/self.Tair
+                self.w_star = np.sqrt(2 * self.r_leaf * abs(self.g_star))
+                self.m = np.sqrt(self.u**2 + self.w_star**2)
+                
+                self.Re = abs(self.m) * (self.r_leaf ) / self.kin_vis 
+                
                 if self.Re <= 10e3:
                     self.Nu = (0.32 + 0.51*self.Re**0.52) 
-                    
                 elif self.Re > 10e3:
-                    self.Nu = 0.23 * self.Re**0.6 
+                    self.Nu = 0.23 * self.Re**0.6
                     
             
-            # Mixed convection
-            else: 
-                self.Nu = ((0.23 * self.Re**0.6 )**3.5 + (0.48 * self.Gr**0.25)**3.5)**-3.5
-               
-        
-        if self.plantpart == 'leaf' or self.plantpart == 'flower':      
-        # Free convection
-            if self.Ri > 10:
-               
-                if self.Tleaf < self.Tair:
-                    self.Nu = 0.13 * self.Gr**0.33
-                elif self.Tleaf > self.Tair:
-                    self.Nu = 0.5 * self.Gr**0.25
-            
-            # Forced convection
-            elif self.Ri < 0.1:
-                if self.Re <= 2e4:
-                    self.Nu = 0.6 * self.Re**0.5
-                   
-                elif self.Re > 2e4:
-                    self.Nu = 0.032 * self.Re**0.8 
-                   
-            
-            # Mixed convection
-            else: 
-                self.Nu = ((0.032 * self.Re**0.8 )**3.5 + (0.13 * self.Gr**0.33)**3.5)**-3.5
+            if self.plantpart == 'leaf' or self.plantpart == 'flower': 
                 
-        
+                self.g_star = self.g * (self.Tleaf-self.Tair)/self.Tair
+                self.w_star = np.sqrt(2 * self.r_leaf * abs(self.g_star))
+                self.m = np.sqrt(self.u**2 + self.w_star**2)
+
+                self.Re = abs(self.m) * (self.r_leaf ) / self.kin_vis 
+                
+                if self.Re < 2e4:
+                    self.Nu = 0.6 * self.Re**0.5
+                elif self.Re > 2e4:
+                    self.Nu = 0.032 * self.Re**0.8
+                
         
     def run_radiation(self):  
         # Calculate the radiation balance of a bud
@@ -196,7 +256,7 @@ class model:
     def run_plant(self):
 
         self.rC =  (self.r_leaf*2) / (self.Nu * self.k) * (self.cp * self.rho)
-        
+                
         self.H =  self.cp * self.rho * self.rC**-1 * (self.Tleaf - self.Tair)
         self.W = self.adv * (self.Tleaf - 273.16 - self.Twater)
         
@@ -287,6 +347,10 @@ class model:
         del(self.Re)
         del(self.Gr)
         
+        del(self.g_star)
+        del(self.w_star)
+        del(self.m)      
+        
         del(self.E_leaf)
         del(self.heatcap_leaf)
         del(self.d_leaf)
@@ -341,7 +405,6 @@ class model:
 # Class for storing bud model output data
 class model_output:
     def __init__(self, tsteps):
-       
         
         self.Nu           = np.zeros(tsteps)      # Nusselt number []
         self.Re           = np.zeros(tsteps)      # Reynolds number []
@@ -374,6 +437,7 @@ class model_output:
 class model_input:
     def __init__(self):
         # general model variables
+        self.model          = "RV"  # Nussel parametrization (Monteith (1990) or Refreshment Velocity)
        
         self.runtime        = None  # duration of model run [s]
         self.dt             = None  # time step [s]
