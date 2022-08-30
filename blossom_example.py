@@ -10,7 +10,6 @@ Example run of BLOSSOM
 
 import os
 os.chdir('...')
-os.chdir('C:/Users/judithboekee/FruitFrost_GitHub/FruitFrost/Plant_Energy_Model/')
 
 import blossom as blossom
 import matplotlib.pyplot as plt
@@ -36,7 +35,7 @@ run1input.Twater         = 280
 run1input.plantpart      = 'leaf'
 run1input.heatcap_leaf   = 1000e3     # heat capacity plant  [J m-3 K-1]
 run1input.d_leaf         = 0.0007     # thickness plant [m]
-run1input.r_leaf         = 0.00657    # radius plant [m]
+run1input.r_leaf         = 0.00657    # radius plant organ [m]
 run1input.Tleaf          = 275        # initial plant temperature [K]
 run1input.SVF            = 0.8
 

@@ -65,7 +65,7 @@ class model:
         
         # initialize leaf characteristics 
         self.heatcap_leaf  = self.input.heatcap_leaf         # heat capacity plant  [J m-3 K-1]
-        self.r_leaf        = self.input.r_leaf               # diameter plant [m]
+        self.r_leaf        = self.input.r_leaf               # radius plant organ [m]
         self.d_leaf        = self.input.d_leaf               # thickness plant [m]
         self.E_leaf        = 0.96                            # emissivity plant
         self.Tleaf         = self.input.Tleaf                # plant temperature [K]
@@ -77,10 +77,10 @@ class model:
             self.V_leaf        = 4/3 * np.pi * (self.r_leaf)**3  # volume leaf [m2]
         elif self.plantpart == 'flower':
             self.A_leaf        = 2 * np.pi * (self.r_leaf)**2    # surface area leaf [m2] 
-            self.V_leaf        = self.A_leaf * self.d_leaf       # volume leaf [m2]
+            self.V_leaf        = self.A_leaf/2 * self.d_leaf       # volume leaf [m2]
         else:
             self.A_leaf        = 2 * np.pi * (self.r_leaf)**2    # surface area leaf [m2] 
-            self.V_leaf        = self.A_leaf * self.d_leaf       # volume leaf [m2]     
+            self.V_leaf        = self.A_leaf/2 * self.d_leaf       # volume leaf [m2]     
        
         self.adv           = self.input.adv
         
